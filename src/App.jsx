@@ -6,7 +6,7 @@ import GameScreen from './screens/GameScreen.jsx'
 import ResultScreen from './screens/ResultScreen.jsx'
 import DexScreen from './screens/DexScreen.jsx'
 import GardenScreen from './screens/GardenScreen.jsx'
-import SeedsScreen from './screens/SeedsScreen.jsx'
+import SeedsScreen from './screens/SeedBagScreen.jsx'
 import { clearAll } from './utils/storage.js'
 
 export default function App() {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { getPlayer, addToDex, addToGarden, addSeed, getPersonalityId } from '../utils/storage.js'
+import { getPlayer, addToDex, addToGarden, addSeed, getPersonalityId, saveGameState, getGameState, clearGameState } from '../utils/storage.js'
 import { PLANTS } from '../data/plants.js'
-import { DIALOGUES, getScenario, getMonologue } from '../data/dialogues.js'
+import { getScenario, getMonologue } from '../data/dialogues.js'
 import DialogueOverlay from './DialogueOverlay.jsx'
 
 const MESSAGES = {
@@ -18,7 +18,6 @@ function PlantCanvas({ stage, color }) {
     const canvasRef = useRef(null)
 
     useEffect(() => {
-
         const canvas = canvasRef.current
         if (!canvas) return
         const ctx = canvas.getContext('2d')
@@ -143,42 +142,75 @@ function PlantCanvas({ stage, color }) {
     )
 }
 
+// 모듈 레벨 — 언마운트/리마운트 사이에서도 유지됨
+let _sessionStartTime = null
+
 export default function GameScreen({ goTo, data }) {
     const player = getPlayer()
     const plant = PLANTS.find(p => p.id === data?.plantId) || PLANTS[0]
     const plantName = data?.plantName || plant.name
     const personalityId = data?.personalityId || getPersonalityId() || 'sunny'
 
-    const [love, setLove] = useState(0)
-    const [stage, setStage] = useState(0)
+    const saved = getGameState()
+
+    // 최초 1회만 설정: 모듈 변수 → localStorage 저장값 → 현재 시각 순으로 폴백
+    if (!_sessionStartTime) {
+        _sessionStartTime = saved?.startTime || Date.now()
+    }
+
+    const [love, setLove] = useState(saved?.love ?? 0)
+    const [stage, setStage] = useState(saved?.stage ?? 0)
     const [message, setMessage] = useState(`안녕! 나는 ${plantName}이에요 🌱`)
-    const [lastAction, setLastAction] = useState({ water: 0, pet: 0, sun: 0, talk: 0 })
-    const [totalActions, setTotalActions] = useState(0)
-    const [elapsed, setElapsed] = useState(0)
+    const [totalActions, setTotalActions] = useState(saved?.totalActions ?? 0)
+    const [elapsed, setElapsed] = useState(
+        Math.floor((Date.now() - _sessionStartTime) / 1000)
+    )
     const [fullyGrown, setFullyGrown] = useState(false)
     const [cooldowns, setCooldowns] = useState({ water: 0, pet: 0, sun: 0, talk: 0 })
     const [dialogue, setDialogue] = useState(null)
     const [talkCount, setTalkCount] = useState(0)
 
-    const startTime = useRef(Date.now())
+    const startTime = useRef(_sessionStartTime)
+    const loveRef = useRef(saved?.love ?? 0)
+    const stageRef = useRef(saved?.stage ?? 0)
+    const totalActionsRef = useRef(saved?.totalActions ?? 0)
+    const lastActionRef = useRef({ water: 0, pet: 0, sun: 0, talk: 0 })
+    const msgTimer = useRef(null)
+    const grownTimers = useRef([])
+
+    // 마운트 즉시 startTime 저장 — 첫 tick 전에 이동해도 복원 가능
+    useEffect(() => {
+        saveGameState({
+            love: loveRef.current,
+            stage: stageRef.current,
+            totalActions: totalActionsRef.current,
+            startTime: startTime.current,
+        })
+    }, [])
 
     // 타이머
     useEffect(() => {
         const timer = setInterval(() => {
             setElapsed(Math.floor((Date.now() - startTime.current) / 1000))
+            saveGameState({
+                love: loveRef.current,
+                stage: stageRef.current,
+                totalActions: totalActionsRef.current,
+                startTime: startTime.current,
+            })
 
-            // 쿨다운 업데이트
             const now = Date.now() / 1000
-            setCooldowns(prev => {
+            setCooldowns(() => {
                 const next = {}
                 Object.keys(COOLDOWNS).forEach(t => {
-                    next[t] = Math.max(0, Math.ceil(COOLDOWNS[t] - (now - (prev[t + '_last'] || 0))))
+                    next[t] = Math.max(0, Math.ceil(COOLDOWNS[t] - (now - (lastActionRef.current[t] || 0))))
                 })
                 return next
             })
         }, 1000)
         return () => clearInterval(timer)
     }, [])
+
     useEffect(() => {
         const monologueTimer = setInterval(() => {
             const defaultMonologues = [
@@ -192,20 +224,26 @@ export default function GameScreen({ goTo, data }) {
             showMessage(monologue)
         }, 20000)
         return () => clearInterval(monologueTimer)
-    }, [])
+    }, [plant.id, personalityId])
 
+    // 언마운트 시 타이머 정리
+    useEffect(() => {
+        return () => {
+            if (msgTimer.current) clearTimeout(msgTimer.current)
+            grownTimers.current.forEach(t => clearTimeout(t))
+        }
+    }, [])
 
     const showMessage = (text) => {
         setMessage(text)
-        setTimeout(() => {
-            setMessage('')
-        }, 5000)
+        if (msgTimer.current) clearTimeout(msgTimer.current)
+        msgTimer.current = setTimeout(() => setMessage(''), 5000)
     }
 
     const doAction = (type) => {
         if (fullyGrown) return
         const now = Date.now() / 1000
-        const last = lastAction[type] || 0
+        const last = lastActionRef.current[type] || 0
         const onCooldown = now - last < COOLDOWNS[type]
 
         if (onCooldown) {
@@ -224,11 +262,15 @@ export default function GameScreen({ goTo, data }) {
         const gain = LOVE_GAIN[type] * bonus
         setLove(prevLove => {
             const newLove = Math.min(100, prevLove + gain)
+            loveRef.current = newLove
             checkStage(newLove)
             return newLove
         })
-        setTotalActions(n => n + 1)
-        setLastAction(prev => ({ ...prev, [type]: now }))
+        setTotalActions(n => {
+            totalActionsRef.current = n + 1
+            return n + 1
+        })
+        lastActionRef.current = { ...lastActionRef.current, [type]: now }
 
         if (type === 'talk') {
             openDialogue()
@@ -237,6 +279,7 @@ export default function GameScreen({ goTo, data }) {
             showMessage(list[Math.floor(Math.random() * list.length)])
         }
     }
+
     const openDialogue = () => {
         const scenario = getScenario(plant.id, personalityId, stage)
 
@@ -245,7 +288,6 @@ export default function GameScreen({ goTo, data }) {
             return
         }
 
-        // 너무 자주 말 걸면 돌려말하기
         if (talkCount >= 3) {
             const tired = [
                 '오늘 할 말은 다 한 것 같아요... 🌿',
@@ -267,9 +309,11 @@ export default function GameScreen({ goTo, data }) {
 
         setStage(prev => {
             if (newStage > prev) {
+                stageRef.current = newStage
                 showMessage(plant.stages[newStage] + ' 단계가 됐어요! 🎉')
                 if (newStage === stageCount - 1) {
-                    setTimeout(() => onFullyGrown(), 500)
+                    const t = setTimeout(() => onFullyGrown(), 500)
+                    grownTimers.current.push(t)
                 }
             }
             return newStage
@@ -277,19 +321,32 @@ export default function GameScreen({ goTo, data }) {
     }
 
     const onFullyGrown = () => {
+        _sessionStartTime = null
         setFullyGrown(true)
         const grownAt = new Date().toLocaleDateString('ko-KR')
         addToDex(plant.id, plantName, grownAt)
         addToGarden({ plantId: plant.id, plantName, grownAt })
         showMessage(`${plantName} 완전히 자랐어요! 🎉`)
-        setTimeout(() => {
+        const t = setTimeout(() => {
             showMessage('씨앗을 남겨줄게요... 내일 또 만나요 🌿')
             addSeed(plant.id)
         }, 3000)
+        grownTimers.current.push(t)
     }
 
     const goHome = () => {
-        goTo('result', { plant, plantName, love, stage, totalActions, elapsed, fullyGrown })
+        _sessionStartTime = null
+        clearGameState()
+        const currentElapsed = Math.floor((Date.now() - startTime.current) / 1000)
+        goTo('result', {
+            plant,
+            plantName,
+            love: loveRef.current,
+            stage: stageRef.current,
+            totalActions: totalActionsRef.current,
+            elapsed: currentElapsed,
+            fullyGrown,
+        })
     }
 
     const m = Math.floor(elapsed / 60)
@@ -439,7 +496,6 @@ export default function GameScreen({ goTo, data }) {
                         }}
                     >
                         {label}
-
                     </button>
                 ))}
             </div>

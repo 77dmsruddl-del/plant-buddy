@@ -4,11 +4,15 @@ const KEY = {
   today: 'pb_today',
   seeds: 'pb_seeds',
   garden: 'pb_garden',
+  gamestate: 'pb_gamestate',
+}
+
+function safeParse(data, fallback) {
+  try { return data ? JSON.parse(data) : fallback } catch { return fallback }
 }
 
 export function getPlayer() {
-  const data = localStorage.getItem(KEY.player)
-  return data ? JSON.parse(data) : null
+  return safeParse(localStorage.getItem(KEY.player), null)
 }
 
 export function savePlayer(name) {
@@ -16,8 +20,7 @@ export function savePlayer(name) {
 }
 
 export function getTodaySeed() {
-  const data = localStorage.getItem(KEY.today)
-  return data ? JSON.parse(data) : null
+  return safeParse(localStorage.getItem(KEY.today), null)
 }
 
 export function saveTodaySeed(plantId, plantName) {
@@ -26,8 +29,7 @@ export function saveTodaySeed(plantId, plantName) {
 }
 
 export function getDex() {
-  const data = localStorage.getItem(KEY.dex)
-  return data ? JSON.parse(data) : {}
+  return safeParse(localStorage.getItem(KEY.dex), {})
 }
 
 export function addToDex(plantId, plantName, grownAt) {
@@ -38,8 +40,7 @@ export function addToDex(plantId, plantName, grownAt) {
 }
 
 export function getGarden() {
-  const data = localStorage.getItem(KEY.garden)
-  return data ? JSON.parse(data) : []
+  return safeParse(localStorage.getItem(KEY.garden), [])
 }
 
 export function addToGarden(plant) {
@@ -49,8 +50,7 @@ export function addToGarden(plant) {
 }
 
 export function getSeeds() {
-  const data = localStorage.getItem(KEY.seeds)
-  return data ? JSON.parse(data) : {}
+  return safeParse(localStorage.getItem(KEY.seeds), {})
 }
 
 export function addSeed(plantId) {
@@ -61,7 +61,7 @@ export function addSeed(plantId) {
 
 export function getToday() {
   const d = new Date()
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function clearAll() {
@@ -69,12 +69,29 @@ export function clearAll() {
 }
 
 export function savePersonality(personalityId) {
-  const data = JSON.parse(localStorage.getItem(KEY.today) || '{}')
+  const data = safeParse(localStorage.getItem(KEY.today), {})
   data.personalityId = personalityId
   localStorage.setItem(KEY.today, JSON.stringify(data))
 }
 
 export function getPersonalityId() {
-  const data = localStorage.getItem(KEY.today)
-  return data ? JSON.parse(data).personalityId : null
+  return safeParse(localStorage.getItem(KEY.today), {}).personalityId ?? null
+}
+
+export function saveGameState(state) {
+  localStorage.setItem(KEY.gamestate, JSON.stringify({ ...state, date: getToday() }))
+}
+
+export function getGameState() {
+  const state = safeParse(localStorage.getItem(KEY.gamestate), null)
+  if (!state) return null
+  // 날짜를 숫자로 비교해서 포맷 차이(2026-5-8 vs 2026-05-08) 무관하게 처리
+  const [sy, sm, sd] = state.date.split('-').map(Number)
+  const now = new Date()
+  if (sy !== now.getFullYear() || sm !== now.getMonth() + 1 || sd !== now.getDate()) return null
+  return state
+}
+
+export function clearGameState() {
+  localStorage.removeItem(KEY.gamestate)
 }
