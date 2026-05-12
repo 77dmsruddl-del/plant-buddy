@@ -10,6 +10,12 @@ export const PLANTS = [
     favoriteAction: 'sun',
     stages: ['씨앗', '발아', '줄기', '꽃봉오리', '개화', '씨앗 맺기'],
     color: 0xFFD700,
+    actionProfile: {
+      water: { min: 1, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      sun:   { min: 1, safeMax: Infinity, penaltyStart: Infinity, penaltyHard: Infinity },
+      pet:   { min: 0, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      talk:  { min: 0, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+    },
   },
   {
     id: 'cactus',
@@ -22,6 +28,12 @@ export const PLANTS = [
     favoriteAction: 'sun',
     stages: ['씨앗', '새순', '통통한 몸통', '가시 발달', '꽃봉오리', '개화'],
     color: 0x5CAD6B,
+    actionProfile: {
+      water: { min: 0, safeMax: 1, penaltyStart: 2, penaltyHard: 3 },
+      sun:   { min: 2, safeMax: Infinity, penaltyStart: Infinity, penaltyHard: Infinity },
+      pet:   { min: 0, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      talk:  { min: 0, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+    },
   },
   {
     id: 'cherry',
@@ -34,6 +46,12 @@ export const PLANTS = [
     favoriteAction: 'talk',
     stages: ['씨앗', '새싹', '어린 나무', '가지 뻗기', '꽃봉오리', '만개'],
     color: 0xFFB7C5,
+    actionProfile: {
+      water: { min: 1, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      sun:   { min: 1, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      pet:   { min: 0, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      talk:  { min: 2, safeMax: Infinity, penaltyStart: Infinity, penaltyHard: Infinity },
+    },
   },
   {
     id: 'strawberry',
@@ -46,6 +64,12 @@ export const PLANTS = [
     favoriteAction: 'water',
     stages: ['씨앗', '발아', '잎 성장', '꽃 피기', '열매 맺기', '빨갛게 익기'],
     color: 0xFF4444,
+    actionProfile: {
+      water: { min: 2, safeMax: Infinity, penaltyStart: Infinity, penaltyHard: Infinity },
+      sun:   { min: 1, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      pet:   { min: 0, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+      talk:  { min: 0, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+    },
   },
   {
     id: 'lavender',
@@ -58,6 +82,12 @@ export const PLANTS = [
     favoriteAction: 'pet',
     stages: ['씨앗', '발아', '잎 무성', '줄기 올라오기', '꽃봉오리', '보라빛 개화'],
     color: 0xB57BFF,
+    actionProfile: {
+      water: { min: 1, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+      sun:   { min: 1, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      pet:   { min: 2, safeMax: Infinity, penaltyStart: Infinity, penaltyHard: Infinity },
+      talk:  { min: 0, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+    },
   },
   {
     id: 'bonsai',
@@ -70,5 +100,11 @@ export const PLANTS = [
     favoriteAction: 'pet',
     stages: ['씨앗', '싹', '어린 가지', '수형 잡기', '솔잎 무성', '완성된 분재'],
     color: 0x3A6B44,
+    actionProfile: {
+      water: { min: 1, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+      sun:   { min: 1, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+      pet:   { min: 2, safeMax: 3, penaltyStart: 4, penaltyHard: 5 },
+      talk:  { min: 1, safeMax: 2, penaltyStart: 3, penaltyHard: 4 },
+    },
   },
 ]

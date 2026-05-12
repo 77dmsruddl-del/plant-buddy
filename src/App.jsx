@@ -56,23 +56,66 @@ export default function App() {
         {screen === 'seeds' && <SeedsScreen goTo={goTo} goBack={goBack} />}
       </div>
 
-      <button
-        onClick={handleReset}
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          padding: '8px 16px',
-          background: 'rgba(255,100,100,0.8)',
-          color: 'white',
-          border: 'none',
-          borderRadius: '20px',
-          fontSize: '12px',
-          cursor: 'pointer'
-        }}
-      >
-        🔄 리셋 (개발용)
-      </button>
+      {/* ── 개발용 버튼 패널 ── */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        alignItems: 'flex-end',
+      }}>
+        {/* 결과 화면 바로보기 (verdict별) */}
+        {['complete', 'good', 'partial', 'fail'].map(verdict => (
+          <button
+            key={verdict}
+            onClick={() => {
+              setGameData({
+                plantId: 'sunflower',
+                plantName: '테스트꽃',
+                finalLove: { complete: 150, good: 120, partial: 80, fail: 20 }[verdict],
+                actionCounts: { water: 3, sun: 5, pet: 2, talk: 3 },
+                verdict,
+              })
+              setScreen('result')
+            }}
+            style={{
+              padding: '5px 12px',
+              background: {
+                complete: 'rgba(74,158,90,0.85)',
+                good:     'rgba(74,144,217,0.85)',
+                partial:  'rgba(255,184,48,0.85)',
+                fail:     'rgba(255,107,107,0.85)',
+              }[verdict],
+              color: 'white',
+              border: 'none',
+              borderRadius: '20px',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            결과: {verdict}
+          </button>
+        ))}
+
+        {/* 리셋 */}
+        <button
+          onClick={handleReset}
+          style={{
+            padding: '8px 16px',
+            background: 'rgba(255,100,100,0.8)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '20px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            marginTop: '4px',
+          }}
+        >
+          🔄 리셋 (개발용)
+        </button>
+      </div>
     </div>
   )
 }

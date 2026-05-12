@@ -4,6 +4,11 @@ import { PLANTS } from '../data/plants.js'
 
 const TYPE_EMOJI = { '꽃': '🌸', '나무': '🌳', '과일': '🍓', '다육': '🌵' }
 
+function formatDate(ts) {
+  const d = new Date(ts)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`
+}
+
 export default function DexScreen({ goTo, goBack }) {
     const dex = getDex()
     const [selected, setSelected] = useState(null)
@@ -181,7 +186,7 @@ export default function DexScreen({ goTo, goBack }) {
                                         borderBottom: '1px solid rgba(0,0,0,0.06)'
                                     }}>
                                         <span>🌱 {r.plantName}</span>
-                                        <span style={{ color: '#888' }}>{r.grownAt}</span>
+                                        <span style={{ color: '#888' }}>{formatDate(r.grownAt)}</span>
                                     </div>
                                 ))}
                             </div>

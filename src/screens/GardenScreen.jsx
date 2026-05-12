@@ -4,6 +4,11 @@ import { PLANTS } from '../data/plants.js'
 
 const TYPE_EMOJI = { '꽃': '🌸', '나무': '🌳', '과일': '🍓', '다육': '🌵' }
 
+function formatDate(ts) {
+  const d = new Date(ts)
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`
+}
+
 export default function GardenScreen({ goTo, goBack }) {
   const garden = getGarden()
 
@@ -106,7 +111,7 @@ export default function GardenScreen({ goTo, goBack }) {
                     fontSize: '10px',
                     color: '#3a7a28'
                   }}>
-                    {g.grownAt}
+                    {formatDate(g.grownAt)}
                   </div>
                 </div>
               )

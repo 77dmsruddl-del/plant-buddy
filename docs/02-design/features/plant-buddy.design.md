@@ -41,9 +41,11 @@ src/
 │   └── storage.js              ← MODIFY: 새 키 3개 추가
 └── screens/
     ├── GameScreen.jsx          ← MODIFY: hook 사용, UI만 남김
-    ├── SeedScreen.jsx          ← MODIFY: TODO 초기 입력 추가
+    ├── SeedScreen.jsx          ← MODIFY: TODO 초기 입력 + 유연근무 시간 입력
     ├── ResultScreen.jsx        ← MODIFY: 4단계 판정 + 씨앗 부스러기
-    └── GardenScreen.jsx        ← MODIFY: 미완성 식물 처리 (그래픽은 별도)
+    ├── GardenScreen.jsx        ← MODIFY: 미완성 식물 처리 (그래픽은 별도)
+    ├── IntroScreen.jsx         ← MODIFY: 근무 유형 + 시간 설정 단계 추가
+    └── HomeScreen.jsx          ← MODIFY: 근무 상태 카드 + 투두 탭 추가
 ```
 
 ### 1.3 데이터 흐름
@@ -221,10 +223,28 @@ const KEY = {
   seeds: 'pb_seeds',
   garden: 'pb_garden',
   gamestate: 'pb_gamestate',
-  // 신규
+  // 신규 (게임 메카닉)
   fertilizers: 'pb_fertilizers',   // Number: 0~3
   todos: 'pb_todos',               // Array: [{ id, text, done, date }]
   unfinished: 'pb_unfinished',     // Array: [{ plantId, date, finalStage, finalLove, note }]
+}
+
+// pb_player 구조 확장 (출퇴근 시스템)
+{
+  name: '탐험가',
+  createdAt: 1234567890000,
+  workType: 'fixed' | 'flexible',  // ← 신규
+  commuteStart: '09:00',           // ← 신규 (HH:MM 문자열)
+  commuteEnd:   '18:00',           // ← 신규
+}
+
+// pb_today 구조 확장 (출퇴근 시스템)
+{
+  plantId, plantName, date, personalityId,  // 기존
+  todayStart:   '09:30',   // ← 신규 (실제 오늘 출근 시각, 지각 반영)
+  todayEnd:     '18:00',   // ← 신규
+  isOvertime:   false,     // ← 신규
+  overtimeEnd:  null,      // ← 신규 ('20:00' 등, 야근 선택 시)
 }
 ```
 
@@ -605,5 +625,184 @@ Session 3: M5 + M6 + M7  (팝업 + 결과 + 정원)
 
 ---
 
+## 11. 출퇴근 시스템 설계
+
+> **추가 일자**: 2026-05-12 | **Plan 참조**: §14~16
+
+### 11.1 IntroScreen — 단계 추가 (3단계로 확장)
+
+```
+기존: 이름 입력 → 게임 시작
+신규: 이름 입력 → 근무 유형 선택 → 시간 설정 → 완료
+
+Step 1: 이름 입력 (기존 유지)
+┌─────────────────────────┐
+│  탐험가 이름을 알려주세요  │
+│  [________________]     │
+│       [다음 →]          │
+└─────────────────────────┘
+
+Step 2: 근무 유형 선택
+┌─────────────────────────┐
+│  근무 형태를 선택하세요   │
+│                         │
+│  ┌───────────────────┐  │
+│  │  📅 고정 근무     │  │  ← 매일 같은 시간
+│  │  출퇴근이 일정해요  │  │
+│  └───────────────────┘  │
+│  ┌───────────────────┐  │
+│  │  🕐 유연 근무     │  │  ← 매일 입력
+│  │  매일 시간이 달라요 │  │
+│  └───────────────────┘  │
+└─────────────────────────┘
+
+Step 3: 시간 설정
+┌─────────────────────────┐
+│  근무 시간을 알려주세요   │
+│                         │
+│  출근  [09] : [00]      │  ← 시/분 선택
+│  퇴근  [18] : [00]      │
+│                         │
+│  고정근무: "매일 이 시간으로 적용돼요"
+│  유연근무: "기본값이에요. 매일 바꿀 수 있어요"
+│                         │
+│     [시작하기 🌱]        │
+└─────────────────────────┘
+```
+
+### 11.2 HomeScreen — 근무 상태 카드 + 투두 탭
+
+```
+┌─────────────────────────┐
+│  안녕하세요, 탐험가님! 🌿  │
+│                         │
+│  ┌─────────────────────┐│  ← 근무 상태 카드
+│  │ ☀️ 근무 중           ││
+│  │ 09:30 → 18:00       ││
+│  │ 남은 시간: 6시간 12분 ││
+│  └─────────────────────┘│
+│                         │
+│  ┌─────────────────────┐│  ← 투두 빠른보기
+│  │ 📋 오늘 할일 1/3 완료 ││
+│  │ > 주간 보고서 작성 ✓  ││
+│  │ > 팀 미팅 자료 준비   ││
+│  └─────────────────────┘│
+│                         │
+│   [🌱 오늘 씨앗 심기]    │
+│   [📖 도감]  [🌳 정원]   │
+└─────────────────────────┘
+
+근무 상태별 카드 내용:
+  출근 전:  "출근까지 N시간 남았어요 ☀️"
+  근무 중:  "남은 근무시간: HH:MM" (실시간)
+  야근 중:  "야근 중 🌙 효율 70%  남은시간: HH:MM"
+  퇴근 후:  "오늘 수고했어요! 내일 또 만나요 🌿"
+```
+
+### 11.3 SeedScreen — 유연근무자 분기
+
+```
+유연근무자 첫 접속 시 씨앗 카드 전에 시간 입력 화면 삽입:
+
+┌─────────────────────────┐
+│  오늘 근무 시간은?        │
+│                         │
+│  출근  [09] : [00]      │
+│  퇴근  [18] : [00]      │
+│                         │
+│      [확인 →]           │
+└─────────────────────────┘
+→ 이후 기존 씨앗 카드 흐름으로 진행
+```
+
+### 11.4 GameScreen — 야근 배너
+
+```
+퇴근 30분 전 자동 표시:
+
+┌─────────────────────────┐  ← GameScreen 상단 배너 (접기 가능)
+│ 🌙 퇴근 30분 남았어요    │
+│ [오늘 퇴근] [+1시간] [+2시간] │
+└─────────────────────────┘
+
+야근 선택 후:
+  - isOvertime = true 저장
+  - 배너 → "야근 중 🌙 | 효율 70%" 상태 표시로 변경
+  - doAction()에서 loveGain × 0.7 적용
+```
+
+### 11.5 useGameEngine — 출퇴근 연동 변경점
+
+```js
+// 세션 시작 시각 계산 (지각 시 당겨서 시작)
+function calcSessionStart(todayStart) {
+  const [h, m] = todayStart.split(':').map(Number)
+  const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+  const commuteTs = today0.getTime() + (h * 60 + m) * 60000
+  return Math.min(Date.now(), commuteTs)
+  // 지각이면 출근 시각(commuteTs)이 더 작으므로 그것을 startTime으로 사용
+  // → 타이머가 지각 시간만큼 앞서 출발
+}
+
+// 야근 여부에 따른 love 배율
+const OVERTIME_MULTIPLIER = 0.7
+
+function getLoveGain(base, isOvertime) {
+  return isOvertime ? Math.round(base * OVERTIME_MULTIPLIER) : base
+}
+
+// doAction 내 적용
+const rawGain = 10 + (plant.favoriteAction === type ? 5 : 0)
+const loveGain = getLoveGain(rawGain, isOvertime)
+```
+
+### 11.6 storage.js — 출퇴근 함수 추가
+
+```js
+// player 저장/로드 (workType, commuteStart, commuteEnd 포함)
+export function savePlayer(name, workType, commuteStart, commuteEnd)
+export function getPlayer()  // 기존 함수, 반환값에 필드 추가됨
+
+// 오늘 출퇴근 시각 (유연근무자 / 야근 처리)
+export function saveTodaySchedule({ todayStart, todayEnd })
+export function getTodaySchedule()   // { todayStart, todayEnd, isOvertime, overtimeEnd }
+export function setOvertime(endTime) // isOvertime=true, overtimeEnd 갱신
+```
+
+---
+
+## 12. 구현 가이드 (업데이트)
+
+### 12.1 Module Map (M8 추가)
+
+| 모듈 | 작업 | 신규 파일 | 수정 파일 |
+|------|------|---------|---------|
+| **M1** | 데이터 기반 | — | plants.js, storage.js |
+| **M2** | useGameEngine 훅 | hooks/useGameEngine.js | — |
+| **M3** | GameScreen 리팩터 | — | GameScreen.jsx |
+| **M4** | TodoPanel + 비료 | components/TodoPanel.jsx | GameScreen.jsx, SeedScreen.jsx |
+| **M5** | PlantPopup + min 경고 | components/PlantPopup.jsx | GameScreen.jsx |
+| **M6** | ResultScreen 재설계 | — | ResultScreen.jsx |
+| **M7** | 정원 미완성 처리 | — | GardenScreen.jsx, DexScreen.jsx |
+| **M8** | 출퇴근 시스템 | — | IntroScreen.jsx, HomeScreen.jsx, SeedScreen.jsx, storage.js, useGameEngine.js |
+
+### 12.2 Session Guide (업데이트)
+
+```
+Session 1: M1 + M2  (데이터 + 게임 로직 핵심)          ✅ 완료
+Session 2: M3 + M4  (게임 화면 UI)                     ✅ 완료
+Session 3: M5 + M6 + M7  (팝업 + 결과 + 정원)          🔄 진행 중
+Session 4: M8  (출퇴근 시스템)                          ⬜ 예정
+  1. storage.js — savePlayer 확장, saveTodaySchedule, setOvertime
+  2. IntroScreen — 3단계 온보딩 (이름→근무유형→시간)
+  3. HomeScreen — 근무 상태 카드 + 투두 탭
+  4. SeedScreen — 유연근무자 시간 입력 분기
+  5. useGameEngine — calcSessionStart + 야근 효율 0.7 적용
+  6. GameScreen — 야근 배너 (퇴근 30분 전 자동 표시)
+```
+
+---
+
 > **다음 단계**: `/pdca do plant-buddy`
-> Session 1 (M1+M2)부터 시작 권장: `/pdca do plant-buddy --scope M1,M2`
+> Session 3 (M5+M6+M7) 이후 Session 4 (M8 출퇴근 시스템) 진행.
+> Session 4 시작: `/pdca do plant-buddy --scope M8`
