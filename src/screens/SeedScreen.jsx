@@ -36,7 +36,8 @@ export default function SeedScreen({ goTo }) {
   const [todayTodos, setTodayTodos] = useState([]) // 이 화면에서 추가한 항목들
 
   const todaySeed = getTodaySeed()
-  const plant = pickTodayPlant()
+  // useState 초기화 함수로 전달 → 마운트 시 1회만 실행, 입력할 때 재호출 없음
+  const [plant] = useState(pickTodayPlant)
 
   // 오늘 이미 씨앗을 심었으면 바로 게임으로
   useEffect(() => {
